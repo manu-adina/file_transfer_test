@@ -14,11 +14,12 @@
 #include <dirent.h>
 
 #include <unordered_set>
+#include <vector>
 
 #define PORT 5802
 
-std::unordered_set<std::string> FileNamesInDirectory() {
-    std::unordered_set<std::string> file_names;
+std::vector<std::string> FileNamesInDirectory() {
+    std::vector<std::string> file_names;
 
     DIR *d;
     struct dirent *dir;
@@ -28,20 +29,25 @@ std::unordered_set<std::string> FileNamesInDirectory() {
         while((dir = readdir(d)) != NULL) {
             std::string file_name(dir->d_name);
             if(file_name == "." || file_name == "..") continue;
-            file_names.insert(file_name);
+            file_names.push_back(file_name);
         }
         closedir(d);
     }
     return file_names;
 }
 
-void MissingFilesVector(std::unordered_set<std::string> ground_station_files,
-                                        std::vector<std::string> &external_computer_files) {
+/* Find the missing files that the ground station may have, and download those missing files. */
+std::vector<std::string> MissingFilesVector(std::unordered_set<std::string> ground_station_files,
+                                        std::vector<std::string> external_computer_files) {
+
+    std::vector<std::string> missing_files;
     for(int i = external_computer_files.size() - 1; i >= 0; i--) {
-        if(ground_station_files.find(external_computer_files[i]) == ground_station_files.end())
-            continue;
-        else external_computer_files.pop_back();
+        if(ground_station_files.find(external_computer_files[i]) == ground_station_files.end()) {
+            missing_files.push_back(external_computer_files[i]);
+        }
     }
+
+    return missing_files;
 }
 
 int SendMissingFiles(std::vector<std::string> external_computer_files) {
@@ -82,21 +88,20 @@ int main(int argc, char **argv) {
     std::cout << sizeof(hello) << std::endl;
     std::cout << "Read " << buffer << std::endl;
 
-    std::unordered_set<std::string> file_names = FileNamesInDirectory();
-    std::vector<std::string> external_computer_files;
-    external_computer_files.push_back("app_example.py");
-    external_computer_files.push_back("client");
-    external_computer_files.push_back("server");
-    
+    std::vector<std::string> file_names = FileNamesInDirectory();
+    std::vector<std::string> missing_files; 
+    std::unordered_set<std::string> external_computer_files;
+    //external_computer_files.insert("app_example.py");
+    //external_computer_files.insert("client");
+    //external_computer_files.insert("server");
+
     for(auto s : file_names) {
-        std::cout << s << std::endl;
+        std::cout << "File in Dir: "<< s << std::endl;
     }
 
-
-    /* Wrong approach. There should be files left at the end */
-    MissingFilesVector(file_names, external_computer_files);
-    for(auto s : external_computer_files) {
-        cout
+    missing_files = MissingFilesVector(external_computer_files, file_names);
+    for(auto s : missing_files) {
+        std::cout << "Left over files: " << s << std::endl;
     }
 
     return 0;
