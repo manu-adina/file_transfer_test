@@ -18,24 +18,13 @@ std::vector<std::string> filenames_vector;
 std::vector<std::string> missing_files;
 std::unordered_set<std::string> received_filenames;
 
-void get_filenames() {
+std::unordered_set<std:string> get_filenames() {
 
     int file_size = 0;
-    int number_of_filenames = 0;
     ssize_t valread;
 
-    /* Receive how many filenames for the program to expect. */
-    if((valread = read(new_socket, &number_of_filenames, 4)) == 4) {
-        number_of_filenames = ntohl(number_of_filenames);
-        std::cout << "Number of Filenames: " << std::to_string(number_of_filenames) << std::endl;
-    } else {
-        std::cerr << "Wasn't able to receive the number of filenames" << std::endl;
-        exit(EXIT_FAILURE);
-    }
-
-    for(int i = 0; i < number_of_filenames; i++) {
+    while(1) {
         if((valread = read(new_socket , &file_size, 4)) == 4) {
-
             std::string received_name;
 
             file_size = ntohl(file_size);
@@ -50,29 +39,31 @@ void get_filenames() {
             received_name = buffer;
             printf("Received filename: %s\n", buffer);
 
-            received_filenames.insert(received_name);
+            received_filenames.push_back(received_name);
 
-            //send_file(buffer);
+            send_file(buffer);
 
             file_size = 0;
+            break;
+
         } else {
-            std::cout << "Wasn't able to receive enough bytes!" << std::endl;
+            std::cout << "Did not receive enough packets" << std::endl;
             break;
         }
     }
 }
 
 void find_missing_files() {
+    std::vector<std::string> missing_files;
     for(std::string name : filenames_vector) {
         if(received_filenames.find(name) == received_filenames.end()) {
-            std::cout << "Missing file: " << name << std::endl;
             missing_files.push_back(name);
         }
     }
 }
 
 void files_in_dir(std::string dir_path) {
-    DIR *dir;
+    DIR dir*;
     struct dirent *ent;
 
     std::string filename;
@@ -80,9 +71,6 @@ void files_in_dir(std::string dir_path) {
     if((dir = opendir(dir_path.c_str())) != NULL) {
         while((ent = readdir(dir)) != NULL) {
             filename = ent->d_name;
-
-            /* Ignore '.' or '..' */
-            if(filename == "." || filename == "..") continue;
             filenames_vector.push_back(filename);
             printf("Filename: %s\n", ent->d_name);        
         }
@@ -91,7 +79,8 @@ void files_in_dir(std::string dir_path) {
     }
 }
 
-void send_file(const char* filename) {
+
+void send_file(char* filename) {
     std::cout << "Sending File Now" << std::endl;
 
     ssize_t sent = 0;
@@ -117,24 +106,10 @@ void send_file(const char* filename) {
     fclose(file);
 }
 
-void send_missing_files() {
-    int number_of_missing = missing_files.size(); 
-    std::cout << "Number of Missing: " << std::to_string(number_of_missing) << std::endl;
-    number_of_missing = htonl(number_of_missing);
-    send(new_socket, &number_of_missing, 4, 0);
-    
-    //for(auto filename : missing_files) {
-    //    send_file(filename.c_str());
-    //}
-}
-
 
 int main(int argc, char const *argv[]) 
 { 
-    /* First get files in the directory */
-    files_in_dir(".");
-
-    ssize_t valread; 
+    int valread; 
     struct sockaddr_in address; 
     int opt = 1; 
     int addrlen = sizeof(address); 
@@ -160,7 +135,8 @@ int main(int argc, char const *argv[])
     address.sin_port = htons(PORT); 
        
     // Attaching socket to the port 5802 
-    if (bind(server_fd, (struct sockaddr *)&address, sizeof(address))<0) 
+    if (bind(server_fd, (struct sockaddr *)&address,  
+                                 sizeof(address))<0) 
     { 
         perror("bind failed"); 
         exit(EXIT_FAILURE); 
@@ -177,8 +153,8 @@ int main(int argc, char const *argv[])
         exit(EXIT_FAILURE); 
     } 
 
-    //std::string filename = "app_example.py";
-    //send_file((char*)filename.c_str());
+    std::string filename = "app_example.py";
+    send_file((char*)filename.c_str());
 
     const char* filenames_start = "FN-STRT";
 
@@ -187,8 +163,6 @@ int main(int argc, char const *argv[])
             if(strcmp(buffer, filenames_start)) {
                 std::cout << "Receiving filenames" << std::endl;
                 get_filenames();
-                find_missing_files();
-                send_missing_files();
             }
             memset(&buffer, 0, sizeof(buffer));
         }

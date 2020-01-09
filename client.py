@@ -10,14 +10,20 @@ port = 5802
 s = socket.socket()
 
 def filenames_in_dir():
-    onlyfiles = [f for f in listdir(".") if isfile(join(".", f))]
+    onlyfiles = [f for f in listdir("./test_dir") if isfile(join(".", f))]
     return onlyfiles
-
-# TODO: Sending a string from here and sending it to the server.
 
 def send_file_names(filenames):
 
+    # Send that you're about to start sending filenames.
     s.send("FN_STRT")
+
+    # Send how many files the server should be expecting.
+    number_of_filenames = len(filenames)
+    number_of_filenames = struct.pack('!i', number_of_filenames)
+    s.send(number_of_filenames)
+
+    # Send integers with the respective filenames.
     for name in filenames:
         print("Filename: " + name)
         rand_num = len(name)
@@ -26,6 +32,19 @@ def send_file_names(filenames):
         num_sent = s.send(rand_pack)
         print("Sent num size: " + str(num_sent))
         str_sent = s.send(name)
+
+        #recv_file()
+
+    # Receive the number of files it will be receiving back.
+    number_of_missing = s.recv(4)
+    number_of_missing = struct.unpack('!i', number_of_missing)[0]
+    print("Number of missing: " + str(number_of_missing))
+
+    #for i in range(0, number_of_missing):
+    #    recv_file()
+
+    #print("Received all the files.")
+
 
 def recv_file():
 
@@ -37,13 +56,6 @@ def recv_file():
             if not data:
                 break
             file.write(data)
-
-#with open(filename, 'rb') as file:
-#    data = file.read(1024)
-#    while(data):
-#        sent_bytes = s.send(data)
-#        data = file.read(1024)
-#print("Sent bytes: " + str(sent_bytes))
 
 def send_integer():
     s.send("FN_STRT")
@@ -70,9 +82,9 @@ def send_integer():
 
 def main():
     s.connect((host, port))
-    #send_file_names(filenames_in_dir())
+    send_file_names(filenames_in_dir())
     #send_integer()
-    recv_file()
+    #recv_file()
     s.close()
 
 main()
