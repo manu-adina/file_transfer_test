@@ -11,7 +11,6 @@
 int new_socket;
 const char *stop_filenames = "FN-STOP";
 
-
 void get_filenames() {
     //int num = 0;
     //valread = read(new_socket, &num, 4);
@@ -23,29 +22,28 @@ void get_filenames() {
     //std::cout << "Filename: " << buffer_str << std::endl;
     
     
-    int file_size;
+    int file_size = 0;
     ssize_t valread;
 
     int i = 0;
 
     while(1) {
-        if((valread = read(new_socket , &file_size, 4)) > 0) {
+        if((valread = read(new_socket , &file_size, 4)) == 4) {
             file_size = ntohl(file_size);
+            std::cout << "Received " << std::to_string(valread) << " bytes!" << std::endl;
             std::cout << "Filename size: " << std::to_string(file_size) << std::endl;
         
             // Include null-byte
-            file_size++;
-            char buffer[file_size];
-            memset(buffer, 0, file_size);
+            file_size;
+            char buffer[file_size + 1];
+            memset(buffer, 0, file_size + 1);
+            //if((valread = read(new_socket, buffer, file_size)) != file_size ) break;
             valread = read(new_socket, buffer, file_size);
             printf("Filename: %s\n", buffer);
             file_size = 0;
-            //if(strcmp(buffer, stop_filenames)) {
-            //    std::cout << "Stopping" << std::endl;
-            //}
-            //i++;
-            //if( i = 10 ) break;
-            } else {
+
+        } else {
+            std::cout << "Did not receive enough packets" << std::endl;
             break;
         }
     }
