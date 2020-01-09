@@ -27,9 +27,27 @@ def send_file_names(filenames):
         print("Sent num size: " + str(num_sent))
         str_sent = s.send(name)
 
+def recv_file():
+
+    filename = '../test_app_example.py'
+
+    with open(filename, 'wb') as file:
+        while True:
+            data = s.recv(1024)
+            if not data:
+                break
+            file.write(data)
+
+#with open(filename, 'rb') as file:
+#    data = file.read(1024)
+#    while(data):
+#        sent_bytes = s.send(data)
+#        data = file.read(1024)
+#print("Sent bytes: " + str(sent_bytes))
+
 def send_integer():
     s.send("FN_STRT")
-    test_string_1 = "Testing_testing_1.cpp"
+    test_string_1 = "app_example.py"
     rand_num = len(test_string_1)
     rand_pack = struct.pack('!i', rand_num)
 
@@ -38,20 +56,23 @@ def send_integer():
     str_sent = s.send(test_string_1)
     print('Sent string length: ' + str(str_sent))
 
-    test_string_2 = "123123_Testing_testing_2.cpp"
-    rand_num = len(test_string_2)
-    rand_pack = struct.pack('!i', rand_num)
+    send_file(test_string_1)
 
-    num_sent = s.send(rand_pack)
-    print("Sent num size: " + str(num_sent))
-    str_sent = s.send(test_string_2)
-    print('Sent string length: ' + str(str_sent))
+    #test_string_2 = "123123_Testing_testing_2.cpp"
+    #rand_num = len(test_string_2)
+    #rand_pack = struct.pack('!i', rand_num)
+
+    #num_sent = s.send(rand_pack)
+    #print("Sent num size: " + str(num_sent))
+    #str_sent = s.send(test_string_2)
+    #print('Sent string length: ' + str(str_sent))
 
 
 def main():
     s.connect((host, port))
-    send_file_names(filenames_in_dir())
+    #send_file_names(filenames_in_dir())
     #send_integer()
+    recv_file()
     s.close()
 
 main()
