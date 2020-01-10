@@ -43,7 +43,7 @@ void get_filenames() {
 
             file_size = ntohl(file_size);
         
-            // Include null-byte
+            /* Include null-byte */
             char buffer[file_size + 1];
             memset(buffer, 0, file_size + 1);
             /* TODO: Check if all bytes have been received */
@@ -192,28 +192,28 @@ int main(int argc, char const *argv[])
         perror("listen"); 
         exit(EXIT_FAILURE); 
     } 
-    if ((new_socket = accept(server_fd, (struct sockaddr *)&address,  
-                       (socklen_t*)&addrlen))<0) 
-    { 
-        perror("accept"); 
-        exit(EXIT_FAILURE); 
-    } 
-
-    //std::string filename = "app_example.py";
-    //send_file((char*)filename.c_str());
 
     const char* filenames_start = "FN-STRT";
 
     while(1) {
+        if ((new_socket = accept(server_fd, (struct sockaddr *)&address,  
+                       (socklen_t*)&addrlen))<0) 
+        { 
+            perror("accept"); 
+            exit(EXIT_FAILURE); 
+        } 
+
         if((valread = read(new_socket , buffer, 8)) > 0) {
-            if(strcmp(buffer, filenames_start)) {
+            if(strcmp(buffer, filenames_start) == 0) {
                 get_filenames();
                 find_missing_files();
                 send_missing_files();
+                missing_files.clear(); 
+                received_filenames.clear();
+
             }
             memset(&buffer, 0, sizeof(buffer));
         }
-        break;
     } 
 
     return 0; 

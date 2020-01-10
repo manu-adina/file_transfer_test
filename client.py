@@ -16,7 +16,7 @@ def filenames_in_dir(dir_path):
 def send_file_names(filenames):
 
     # Send that you're about to start sending filenames.
-    s.send("FN_STRT")
+    s.send("FN-STRT")
 
     # Send how many files the server should be expecting.
     number_of_filenames = len(filenames)
@@ -30,8 +30,6 @@ def send_file_names(filenames):
 
         num_sent = s.send(rand_pack)
         str_sent = s.send(name)
-
-        #recv_file()
 
     # Receive the number of files it will be receiving back.
     number_of_missing = s.recv(4)
@@ -52,8 +50,11 @@ def send_file_names(filenames):
         # Recv file
         recv_file(folder, filename)
 
-
-    print("\nFile Client: succesfully received all the files")
+    s.close()
+    if number_of_missing == 0:
+        print("File Client: files are already in sync")
+    else:
+        print("File Client: succesfully received all the files")
 
 
 def recv_file(folder, filename):
@@ -82,28 +83,7 @@ def recv_file(folder, filename):
             sys.stdout.write("\rFile Client: downloading - " + str(file_size - data_to_recv) + " / " + str(file_size))
             sys.stdout.flush()
 
-def send_integer():
-    s.send("FN_STRT")
-    test_string_1 = "app_example.py"
-    rand_num = len(test_string_1)
-    rand_pack = struct.pack('!i', rand_num)
-
-    num_sent = s.send(rand_pack)
-    print("Sent num size: " + str(num_sent))
-    str_sent = s.send(test_string_1)
-    print('Sent string length: ' + str(str_sent))
-
-    send_file(test_string_1)
-
-    #test_string_2 = "123123_Testing_testing_2.cpp"
-    #rand_num = len(test_string_2)
-    #rand_pack = struct.pack('!i', rand_num)
-
-    #num_sent = s.send(rand_pack)
-    #print("Sent num size: " + str(num_sent))
-    #str_sent = s.send(test_string_2)
-    #print('Sent string length: ' + str(str_sent))
-
+    print()
 
 def main():
     s.connect((host, port))
