@@ -106,9 +106,6 @@ void send_file(const char* filename) {
     ssize_t read_bytes = 0;
 
     std::cout << "About to read the file" << std::endl;
-    
-    /* Read 1 byte at a time, for 1024 elements */
-    //if()
 
     /* First send the size of the file */
     struct stat st;
@@ -118,6 +115,7 @@ void send_file(const char* filename) {
     file_size = htonl(file_size);
     send(new_socket, &file_size, 4, 0);
 
+    /* Read bytes into buffer, and then send the buffer */
     while((read_bytes = fread(file_buf, sizeof(char), BUFFER_LEN, file)) > 0) {
         std::cout << "Read: " << std::to_string(read_bytes) << std::endl;
         /* TODO: Check if all bytes have been sent */
@@ -203,22 +201,18 @@ int main(int argc, char const *argv[])
         exit(EXIT_FAILURE); 
     } 
 
-    //std::string filename = "app_example.py";
-    //send_file((char*)filename.c_str());
-
     const char* filenames_start = "FN-STRT";
 
     while(1) {
         if((valread = read(new_socket , buffer, 8)) > 0) {
-            if(strcmp(buffer, filenames_start)) {
-                std::cout << "Receiving filenames" << std::endl;
+            if(!strcmp(buffer, filenames_start)) {
+                std::cout << "File Server: Receiving Files!" << std::endl;
                 get_filenames();
                 find_missing_files();
                 send_missing_files();
             }
             memset(&buffer, 0, sizeof(buffer));
         }
-        break;
     } 
 
     return 0; 
