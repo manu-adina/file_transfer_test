@@ -20,6 +20,7 @@ def send_file_names(filenames):
 
     # Send how many files the server should be expecting.
     number_of_filenames = len(filenames)
+    print("Number of filenames to send: " + str(number_of_filenames))
     number_of_filenames = struct.pack('!i', number_of_filenames)
     s.send(number_of_filenames)
 
@@ -40,22 +41,39 @@ def send_file_names(filenames):
     number_of_missing = struct.unpack('!i', number_of_missing)[0]
     print("Number of missing: " + str(number_of_missing))
 
-    #for i in range(0, number_of_missing):
-    #    recv_file()
+    # Start receiving filename lengths, filename strings, and then files themselves.
 
-    #print("Received all the files.")
+    for i in range(0, number_of_missing):
+        # Recv size of filename.
+        filename_length = s.recv(4)
+        filename_length = struct.unpack('!i', filename_length)[0]
+        print("Incoming filename length: " + str(filename_length))
+
+        # Recv filename string
+        filename = s.recv(filename_length)
+        print("Filename Received: " + filename)
+
+        folder = './test_dir'
+        # Recv file
+        recv_file(folder, filename)
+
+        break
+
+    print("Received all the files.")
 
 
-def recv_file():
+def recv_file(folder, filename):
 
-    filename = '../test_app_example.py'
-
-    with open(filename, 'wb') as file:
+    path = folder + '/' + filename;
+    print(path)
+    with open(path, 'wb') as file:
         while True:
             data = s.recv(1024)
             if not data:
+                print("No data received")
                 break
             file.write(data)
+            #print("Bytes written: " + str(file.write(data)))
 
 def send_integer():
     s.send("FN_STRT")

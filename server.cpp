@@ -79,10 +79,10 @@ void files_in_dir(std::string dir_path) {
     
     if((dir = opendir(dir_path.c_str())) != NULL) {
         while((ent = readdir(dir)) != NULL) {
+            /* Ignore directories, only work with files */
+            if(ent->d_type == DT_DIR) continue;
+            
             filename = ent->d_name;
-
-            /* Ignore '.' or '..' */
-            if(filename == "." || filename == "..") continue;
             filenames_vector.push_back(filename);
             printf("Filename: %s\n", ent->d_name);        
         }
@@ -107,6 +107,9 @@ void send_file(const char* filename) {
     std::cout << "About to read the file" << std::endl;
     
     /* Read 1 byte at a time, for 1024 elements */
+    //if()
+
+
     while((read_bytes = fread(file_buf, sizeof(char), BUFFER_LEN, file)) > 0) {
         std::cout << "Read: " << std::to_string(read_bytes) << std::endl;
         /* TODO: Check if all bytes have been sent */
@@ -118,14 +121,31 @@ void send_file(const char* filename) {
 }
 
 void send_missing_files() {
+
+    /* First sending how many files to send */
     int number_of_missing = missing_files.size(); 
     std::cout << "Number of Missing: " << std::to_string(number_of_missing) << std::endl;
     number_of_missing = htonl(number_of_missing);
     send(new_socket, &number_of_missing, 4, 0);
     
-    //for(auto filename : missing_files) {
-    //    send_file(filename.c_str());
-    //}
+    /* Sending length of filename, string of filename, 
+     * and then sending the file itself consecutively. */
+    for(auto filename : missing_files) {
+        filename = "app_example.py";
+        /* Sending the filename length */
+        int filename_length = filename.size();
+        filename_length = htonl(filename_length);
+        send(new_socket, &filename_length, 4, 0);
+
+        /* Sending the filename string */
+        const char *filename_c = filename.c_str();
+        printf("Size of filename char*: %d\n", filename.size());
+        send(new_socket, filename_c, filename.size(), 0);
+
+        /* Send the file itself */
+        send_file(filename.c_str());
+        break;
+    }
 }
 
 
@@ -139,7 +159,6 @@ int main(int argc, char const *argv[])
     int opt = 1; 
     int addrlen = sizeof(address); 
     char buffer[8] = {0}; 
-    char *hello = "Hello from server"; 
        
     // Creating socket file descriptor 
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) 
