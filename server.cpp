@@ -31,7 +31,6 @@ void get_filenames() {
     /* Receive how many filenames for the program to expect. */
     if((valread = read(new_socket, &number_of_filenames, 4)) == 4) {
         number_of_filenames = ntohl(number_of_filenames);
-        std::cout << "Number of Filenames: " << std::to_string(number_of_filenames) << std::endl;
     } else {
         std::cerr << "Wasn't able to receive the number of filenames" << std::endl;
         exit(EXIT_FAILURE);
@@ -43,8 +42,6 @@ void get_filenames() {
             std::string received_name;
 
             file_size = ntohl(file_size);
-            std::cout << "Received " << std::to_string(valread) << " bytes!" << std::endl;
-            std::cout << "Filename size: " << std::to_string(file_size) << std::endl;
         
             // Include null-byte
             char buffer[file_size + 1];
@@ -52,7 +49,6 @@ void get_filenames() {
             /* TODO: Check if all bytes have been received */
             valread = read(new_socket, buffer, file_size);
             received_name = buffer;
-            printf("Received filename: %s\n", buffer);
 
             received_filenames.insert(received_name);
             file_size = 0;
@@ -66,7 +62,6 @@ void get_filenames() {
 void find_missing_files() {
     for(std::string name : filenames_vector) {
         if(received_filenames.find(name) == received_filenames.end()) {
-            std::cout << "Missing file: " << name << std::endl;
             missing_files.push_back(name);
         }
     }
@@ -85,7 +80,6 @@ void files_in_dir(std::string dir_path) {
             
             filename = ent->d_name;
             filenames_vector.push_back(filename);
-            printf("Filename: %s\n", ent->d_name);        
         }
     } else {
         std::cerr << "Could not open that directory" << std::endl;
@@ -93,7 +87,6 @@ void files_in_dir(std::string dir_path) {
 }
 
 void send_file(const char* filename) {
-    std::cout << "Sending File Now" << std::endl;
 
     ssize_t sent = 0;
 
@@ -105,25 +98,26 @@ void send_file(const char* filename) {
 
     ssize_t read_bytes = 0;
 
-    std::cout << "About to read the file" << std::endl;
-    
-    /* Read 1 byte at a time, for 1024 elements */
-    //if()
-
     /* First send the size of the file */
     struct stat st;
     stat(filename, &st);
     unsigned int file_size = st.st_size; 
-    std::cout << "Sending size of the file: " << std::to_string(file_size) << std::endl;
     file_size = htonl(file_size);
     send(new_socket, &file_size, 4, 0);
 
+    std::cout << "File Server: sending file - '" << filename << "'" << std::endl;
+
+    /* Counters to print the progress */
+    int total_sent = 0;
+    file_size = ntohl(file_size);
+
     while((read_bytes = fread(file_buf, sizeof(char), BUFFER_LEN, file)) > 0) {
-        std::cout << "Read: " << std::to_string(read_bytes) << std::endl;
         /* TODO: Check if all bytes have been sent */
         sent = send(new_socket, file_buf, read_bytes, 0); 
-        std::cout << "Sent: " << std::to_string(sent) << std::endl;
+        total_sent += read_bytes;
+        std::cout << "\r" << "File Server: sending - " << std::to_string(total_sent) << " / " << std::to_string(file_size) << " bytes";
     }
+    std::cout << std::endl;
 
     fclose(file);
 }
@@ -132,7 +126,10 @@ void send_missing_files() {
 
     /* First sending how many files to send */
     int number_of_missing = missing_files.size(); 
-    std::cout << "Number of Missing: " << std::to_string(number_of_missing) << std::endl;
+
+    if(!number_of_missing) std::cout << "File Server: Your data is in sync." << std::endl;
+    else std::cout << "File Server: number of files to send " << std::to_string(number_of_missing) << std::endl;
+
     number_of_missing = htonl(number_of_missing);
     send(new_socket, &number_of_missing, 4, 0);
     
@@ -146,7 +143,6 @@ void send_missing_files() {
 
         /* Sending the filename string */
         const char *filename_c = filename.c_str();
-        printf("Size of filename string: %d\n", filename.size());
         send(new_socket, filename_c, filename.size(), 0);
 
         /* Send the file itself */
@@ -211,7 +207,6 @@ int main(int argc, char const *argv[])
     while(1) {
         if((valread = read(new_socket , buffer, 8)) > 0) {
             if(strcmp(buffer, filenames_start)) {
-                std::cout << "Receiving filenames" << std::endl;
                 get_filenames();
                 find_missing_files();
                 send_missing_files();
