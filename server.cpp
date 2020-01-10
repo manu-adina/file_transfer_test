@@ -9,8 +9,12 @@
 #include <vector>
 #include <unordered_set>
 
+#include <sys/stat.h>
+
 #define PORT 5802
 #define BUFFER_LEN 1024 
+
+std::string folder_str = "./server_test_files/";
 
 int new_socket, server_fd;
 const char *stop_filenames = "FN-STOP";
@@ -51,9 +55,6 @@ void get_filenames() {
             printf("Received filename: %s\n", buffer);
 
             received_filenames.insert(received_name);
-
-            //send_file(buffer);
-
             file_size = 0;
         } else {
             std::cout << "Wasn't able to receive enough bytes!" << std::endl;
@@ -109,6 +110,13 @@ void send_file(const char* filename) {
     /* Read 1 byte at a time, for 1024 elements */
     //if()
 
+    /* First send the size of the file */
+    struct stat st;
+    stat(filename, &st);
+    unsigned int file_size = st.st_size; 
+    std::cout << "Sending size of the file: " << std::to_string(file_size) << std::endl;
+    file_size = htonl(file_size);
+    send(new_socket, &file_size, 4, 0);
 
     while((read_bytes = fread(file_buf, sizeof(char), BUFFER_LEN, file)) > 0) {
         std::cout << "Read: " << std::to_string(read_bytes) << std::endl;
@@ -131,7 +139,6 @@ void send_missing_files() {
     /* Sending length of filename, string of filename, 
      * and then sending the file itself consecutively. */
     for(auto filename : missing_files) {
-        filename = "app_example.py";
         /* Sending the filename length */
         int filename_length = filename.size();
         filename_length = htonl(filename_length);
@@ -139,12 +146,12 @@ void send_missing_files() {
 
         /* Sending the filename string */
         const char *filename_c = filename.c_str();
-        printf("Size of filename char*: %d\n", filename.size());
+        printf("Size of filename string: %d\n", filename.size());
         send(new_socket, filename_c, filename.size(), 0);
 
         /* Send the file itself */
-        send_file(filename.c_str());
-        break;
+        std::string full_path = folder_str + filename;
+        send_file(full_path.c_str());
     }
 }
 
@@ -152,7 +159,7 @@ void send_missing_files() {
 int main(int argc, char const *argv[]) 
 { 
     /* First get files in the directory */
-    files_in_dir(".");
+    files_in_dir("./server_test_files");
 
     ssize_t valread; 
     struct sockaddr_in address; 

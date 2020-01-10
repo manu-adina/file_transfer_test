@@ -9,8 +9,8 @@ port = 5802
 
 s = socket.socket()
 
-def filenames_in_dir():
-    onlyfiles = [f for f in listdir("./test_dir") if isfile(join(".", f))]
+def filenames_in_dir(dir_path):
+    onlyfiles = [f for f in listdir(dir_path) if isfile(join(".", f))]
     return onlyfiles
 
 def send_file_names(filenames):
@@ -53,27 +53,38 @@ def send_file_names(filenames):
         filename = s.recv(filename_length)
         print("Filename Received: " + filename)
 
-        folder = './test_dir'
+        folder = './client_test_files'
         # Recv file
         recv_file(folder, filename)
 
-        break
 
     print("Received all the files.")
 
 
 def recv_file(folder, filename):
 
+    file_size = s.recv(4);
+    file_size = struct.unpack('!I', file_size)[0]
+    print("Receiving file size of: " + str(file_size))
+
     path = folder + '/' + filename;
     print(path)
+
+    data_to_send = file_size
+    data_chunk = 1024
+
     with open(path, 'wb') as file:
-        while True:
-            data = s.recv(1024)
+        while data_to_send:
+            if data_to_send < data_chunk:
+                data_chunk = data_to_send;
+
+            data = s.recv(data_chunk)
             if not data:
                 print("No data received")
                 break
             file.write(data)
             #print("Bytes written: " + str(file.write(data)))
+            data_to_send = data_to_send - data_chunk;
 
 def send_integer():
     s.send("FN_STRT")
@@ -100,7 +111,7 @@ def send_integer():
 
 def main():
     s.connect((host, port))
-    send_file_names(filenames_in_dir())
+    send_file_names(filenames_in_dir('./client_test_files'))
     #send_integer()
     #recv_file()
     s.close()
