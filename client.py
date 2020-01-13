@@ -10,8 +10,14 @@ port = 5802
 s = socket.socket()
 
 def filenames_in_dir(dir_path):
-    onlyfiles = [f for f in listdir(dir_path) if isfile(join(dir_path, f))]
-    return onlyfiles
+    onlyfiles = []
+    try:
+        onlyfiles = [f for f in listdir(dir_path) if isfile(join(dir_path, f)) and not f == sys.argv[0]]
+    except OSError:
+        print("File Client: could not find the specified directory")
+        return onlyfiles
+    else:
+        return onlyfiles
 
 def send_file_names(filenames):
 
@@ -71,7 +77,7 @@ def recv_file(folder, filename):
 
     with open(path, 'wb') as file:
         while data_to_recv:
-            if data_to_recv< data_chunk:
+            if data_to_recv < data_chunk:
                 data_chunk = data_to_recv;
 
             data = s.recv(data_chunk)
@@ -86,8 +92,27 @@ def recv_file(folder, filename):
     print()
 
 def main():
-    s.connect((host, port))
-    send_file_names(filenames_in_dir('./client_test_files'))
+    n_arguments = len(sys.argv) - 1
+    folder_path = ""
+    if n_arguments > 0:
+        print("File Client: syncing with the folder '%s'" % (sys.argv[1]))
+        folder_path = sys.argv[1]
+    else:
+        print("File Client: syncing with the current directory")
+        folder_path = "."
+
+    try:
+        s.connect((host, port))
+    except socket.error:
+        print("File Client: could not connect to the ground station")
+    else:
+        print("File Client: successfully connected to the ground station")
+        filenames = filenames_in_dir(folder_path)
+        if len(filenames) == 0:
+            return
+        else:
+            send_file_names(filenames_in_dir(folder_path))
+
     s.close()
 
 main()
