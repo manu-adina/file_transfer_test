@@ -15,7 +15,7 @@ class TCPFileTransfer
         void RecvNames(int mode);
         void SendDirNames();
         void SendFile(const char *filename);
-        void SendMissingFiles();
+        void SendMissingFiles(std::string dirname);
         void FindMissingFiles();
         void Run();
 

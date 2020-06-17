@@ -181,7 +181,7 @@ void TCPFileTransfer::SendFile(const char *filename) {
     fclose(file);
 }
 
-void TCPFileTransfer::SendMissingFiles() {
+void TCPFileTransfer::SendMissingFiles(std::string dirname) {
     /* First sending how many files to send */
     int number_of_missing = _missing_files.size();
     std::cout << "Number of missing: " << std::to_string(number_of_missing) << std::endl;
@@ -206,7 +206,7 @@ void TCPFileTransfer::SendMissingFiles() {
         send(_new_socket, filename_c, filename.size(), 0);
 
         /* Send the file itself */
-        std::string full_path = folder_str + filename;
+        std::string full_path = folder_str + dirname + "/" + filename;
         SendFile(full_path.c_str());
     }
     /* Clear so that it doesn't persist for the next directory stage */
@@ -239,7 +239,8 @@ void TCPFileTransfer::SendDirNames() {
         std::string dir_path_str = folder_str + dirname + "/";
         FilesInDirectory(dir_path_str.c_str());
         FindMissingFiles();
-        SendMissingFiles();
+        SendMissingFiles(dirname);
+        std::cout << "Files Server: sent all the items" << std::endl;
     }
 }
 
@@ -267,7 +268,7 @@ void TCPFileTransfer::Run() {
                 // Find all the files in the "home" directory
                 RecvNames(RECV_FN);
                 FindMissingFiles();
-                SendMissingFiles();
+                SendMissingFiles("");
                 SendDirNames();
 
                 // Start Receiving all the directory contents

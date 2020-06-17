@@ -33,7 +33,7 @@ def send_names(names, mode):
         s.send(name_len)
         s.send(name.encode())
 
-def recv_files():
+def recv_files(dirname):
     # Receive the number of files it will be receiving back.
     number_of_missing = s.recv(4)
     number_of_missing = struct.unpack('!i', number_of_missing)[0]
@@ -49,7 +49,7 @@ def recv_files():
         filename = s.recv(filename_length)
         filename_str = filename.decode()
         # Recv file
-        recv_file(filename_str)
+        recv_file(dirname + "/" + filename_str)
     if number_of_missing == 0:
         print("File Client: files are already in sync")
     else:
@@ -79,7 +79,8 @@ def sync_dir(dirname):
 
     print("File Client: folder path created")
     number_of_missing_in_dir = send_names(filenames_in_dir(dir_path), 0)
-    print("Number of missing in dir: " + str(number_of_missing_in_dir))
+    recv_files(dirname)
+    print("File Client: number of missing in dir (" + str(number_of_missing_in_dir) + ")")
 
 def recv_file(filename):
     file_size = s.recv(4)
@@ -124,7 +125,7 @@ def main():
 
         # 1. Downloading the missing files in project directory.
         number_of_missing = send_names(filenames_in_dir(folder_path), 0)
-        recv_files()
+        recv_files("")
         recv_dirs()
         # 2. Receive directory names.
 
