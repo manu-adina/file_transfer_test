@@ -99,9 +99,11 @@ def recv_file(filename):
                 data = s.recv(data_chunk - data_recv)
                 file.write(data)
                 data_recv = data_recv + len(data)
-                print("File Client: RECEIVED - " + str(data_recv))
+                # print("File Client: RECEIVED - " + str(data_recv))
 
             data_to_recv = data_to_recv - data_recv
+    print("File Client: downloading complete - " + filename)
+
 
 def main():
     n_arguments = len(sys.argv) - 1

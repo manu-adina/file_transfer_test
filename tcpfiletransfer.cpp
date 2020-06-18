@@ -33,7 +33,6 @@ TCPFileTransfer::TCPFileTransfer()
 void TCPFileTransfer::Start() {
 
     /* First get files in the directory */
-    FilesInDirectory(folder_str.c_str());
 
     int opt = 1;
     _addrlen = sizeof(_address);
@@ -74,24 +73,39 @@ void TCPFileTransfer::Start() {
     std::cout << "Successfully created a TCP server." << std::endl;
 }
 
-// Gather both files and dirnames in the 'scan_results' directory
+// Gather files in 'scan_results' directory
 void TCPFileTransfer::FilesInDirectory(std::string directory_path) {
     DIR *dir;
     struct dirent *ent;
 
-    std::string filename;
+    if((dir = opendir(directory_path.c_str())) != NULL) {
+        while((ent = readdir(dir)) != NULL) {
+            // Look for files in the folder
+            if(ent->d_type == DT_REG) _filenames_vector.push_back(ent->d_name); 
+        }
+    } else {
+        std::cerr << "File Server: could not open that directory - " << directory_path << std::endl;
+        exit(EXIT_FAILURE);
+    }
+}
+
+void TCPFileTransfer::DirsInDirectory(std::string directory_path) {
+    DIR *dir;
+    struct dirent *ent;
 
     if((dir = opendir(directory_path.c_str())) != NULL) {
         while((ent = readdir(dir)) != NULL) {
-            // Look for files and directories in the folder
+            // Look for directories in the folder
             std::string dirname = ent->d_name;
             if(ent->d_type == DT_DIR) {
-                if(dirname != ".." && dirname != ".") _dirnames_vector.push_back(ent->d_name);
+                if(dirname != ".." && dirname != ".") {
+                    _dirnames_vector.push_back(ent->d_name);
+                    std::cout << "File Server: SCANNING - " << ent->d_name << std::endl;
+                }
             }
-            else if(ent->d_type == DT_REG) _filenames_vector.push_back(ent->d_name); 
         }
     } else {
-        std::cerr << "Could not open that directory" << std::endl;
+        std::cerr << "File Server: could not open that directory - " << directory_path << std::endl;
         exit(EXIT_FAILURE);
     }
 }
@@ -100,7 +114,7 @@ void TCPFileTransfer::FilesInDirectory(std::string directory_path) {
  * Mode = 1 - Recv Dirnames
  */
 void TCPFileTransfer::RecvNames(int mode) {
-
+    
     int file_size = 0;
     int number_of_filenames = 0;
     ssize_t valread;
@@ -126,7 +140,7 @@ void TCPFileTransfer::RecvNames(int mode) {
             /* TODO: Check if all bytes have been received */
             valread = read(_new_socket, buffer, file_size);
             received_name = buffer;
-            std::cout << "Received name: " << received_name << std::endl;
+            std::cout << "File Server: received name - " << received_name << std::endl;
 
             if(!mode) _received_filenames.insert(received_name);
             else _received_dirnames.insert(received_name);
@@ -174,17 +188,19 @@ void TCPFileTransfer::SendFile(const char *filename) {
             bytes_left -= sent;
         }
 
-        printf("File Server: total bytes sent - %d\n", total);
+        //printf("File Server: total bytes sent - %d\n", total);
         //qDebug("File Server: sending - %d / %d bytes", total_sent, file_size);
     }
 
     fclose(file);
+    printf("File Server: finished sending - %s\n", filename);
 }
 
 void TCPFileTransfer::SendMissingFiles(std::string dirname) {
     /* First sending how many files to send */
     int number_of_missing = _missing_files.size();
-    std::cout << "Number of missing: " << std::to_string(number_of_missing) << std::endl;
+    std::cout << "File Server: Number of missing (" << std::to_string(number_of_missing)
+              << ") in dir './" << dirname << "'" << std::endl;
 
     if(!number_of_missing) std::cout << "File Server: your data is in sync." << std::endl;
     else printf("File Server: number of files to send (%d)\n", number_of_missing);
@@ -224,7 +240,7 @@ void TCPFileTransfer::SendDirNames() {
     
     for(auto dirname : _dirnames_vector) {
         /* Sending the dirname length */
-        std::cout << "File Server: processing directory - " << dirname << std::endl;
+        std::cout << "File Server: processing directory - '" << dirname << "'" << std::endl;
         int dirname_length = dirname.size();
         dirname_length = htonl(dirname_length);
         send(_new_socket, &dirname_length, 4, 0);
@@ -233,14 +249,14 @@ void TCPFileTransfer::SendDirNames() {
         const char *dirname_c = dirname.c_str();
         send(_new_socket, dirname_c, dirname.size(), 0);
         _received_filenames.clear();
-        RecvNames(RECV_FN);
         _missing_files.clear();
+        RecvNames(RECV_FN);
         _filenames_vector.clear();
         std::string dir_path_str = folder_str + dirname + "/";
         FilesInDirectory(dir_path_str.c_str());
         FindMissingFiles();
         SendMissingFiles(dirname);
-        std::cout << "Files Server: sent all the items" << std::endl;
+        std::cout << "File Server: sent all the items" << std::endl;
     }
 }
 
@@ -263,23 +279,20 @@ void TCPFileTransfer::Run() {
             exit(EXIT_FAILURE);
         }
 
+        std::cout << "File Server: new connection accepted" << std::endl;
+
         if((_valread = read(_new_socket , _fn_start_buffer, 8)) > 0) {
             if(strcmp(_fn_start_buffer, _filenames_start) == 0) {
                 // Find all the files in the "home" directory
+                FilesInDirectory(folder_str.c_str());
                 RecvNames(RECV_FN);
                 FindMissingFiles();
                 SendMissingFiles("");
+                DirsInDirectory(folder_str.c_str());
                 SendDirNames();
-
-                // Start Receiving all the directory contents
-                for(auto name : _missing_dirs) {
-                    std::cout << "Missing Dir: " << name << std::endl;
-                }
-                // For all the files in the directory, do the steps above.
-                //for(int i = 0; i < number_of_missing; i++) {
-                //    RecvFile(RECV_FN);
-                //    FindMissingFiles();
-                //}
+                _dirnames_vector.clear();
+                
+                std::cout << std::endl;
 
                 _missing_files.clear();
                 _received_filenames.clear();

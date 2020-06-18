@@ -12,6 +12,7 @@ class TCPFileTransfer
         TCPFileTransfer();
         void Start();
         void FilesInDirectory(std::string directory_path);
+        void DirsInDirectory(std::string directory_path);
         void RecvNames(int mode);
         void SendDirNames();
         void SendFile(const char *filename);
